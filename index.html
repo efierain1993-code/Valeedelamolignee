@@ -439,7 +439,7 @@
                 + '<div class="contenu">'
                 + '<h3>' + escapeHtml(nom) + '</h3>'
                 + '<div class="categorie">' + escapeHtml(categorie) + '</div>'
-                + '<div class="prix">' + prix.toFixed(2) + ' &euro;</div>'
+                + '<div class="prix">' + prix.toFixed(2).replace('.', ',') + ' &euro;</div>'
                 + '<div>' + badgeStock(stock) + '</div>'
                 + '<div class="producteur">Par : <strong>' + escapeHtml(prod) + '</strong></div>'
                 + '</div></div>';
@@ -473,7 +473,7 @@
                 produitsHtml = '<div class="produits-liste"><details>'
                     + '<summary>Voir les ' + mesProduits.length + ' produit(s)</summary><ul>';
                 mesProduits.forEach(function(p) {
-                    var prix = (parseFloat(p['Prix']) || 0).toFixed(2);
+                    var prix = (parseFloat(p['Prix']) || 0).toFixed(2).replace('.', ',');
                     produitsHtml += '<li><strong>' + escapeHtml(String(p['Nom'] || '')) + '</strong> — '
                         + prix + ' &euro; | ' + badgeStock(p['Stock']) + '</li>';
                 });
