@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vallees de la Molignee</title>
+
+    <!-- SheetJS — lecture CSV Google Sheets -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* ============================================================
+           THEME NATUREL — Vert foret / Terre / Creme
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background-color: #F5F0E8;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── HEADER ─────────────────────────────────────────────── */
+        header {
+            background: linear-gradient(135deg, #2D5016 0%, #3a6b1e 100%);
+            color: #F5F0E8;
+            padding: 28px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+        header h1 { font-size: 1.8rem; letter-spacing: 1px; }
+        header h1 span { font-weight: 300; opacity: 0.85; }
+
+        /* ── NAVIGATION ─────────────────────────────────────────── */
+        nav { display: flex; gap: 6px; align-items: center; }
+        nav button {
+            background: transparent;
+            color: #F5F0E8;
+            border: 2px solid rgba(245,240,232,0.4);
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-family: Georgia, serif;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        nav button:hover, nav button.active {
+            background: #F5F0E8;
+            color: #2D5016;
+            border-color: #F5F0E8;
+        }
+
+        /* ── BARRE FILTRES ──────────────────────────────────────── */
+        .filtre-bar {
+            background: #fff;
+            border-bottom: 2px solid #e0d8cc;
+            padding: 14px 40px;
+            display: none;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filtre-bar.visible { display: flex; }
+        .filtre-bar label { font-size: 0.9rem; color: #8B5E3C; font-weight: 600; }
+        .filtre-bar select {
+            padding: 6px 12px;
+            border: 1px solid #8B5E3C;
+            border-radius: 6px;
+            font-family: Georgia, serif;
+            background: #fff;
+        }
+        .filtre-bar input[type="checkbox"] { accent-color: #2D5016; }
+        .filtre-bar .compteur { margin-left: auto; font-size: 0.9rem; color: #555; }
+        .btn-vert {
+            background: #2D5016; color: #F5F0E8; border: none;
+            padding: 8px 18px; border-radius: 8px;
+            font-family: Georgia, serif; cursor: pointer;
+            font-size: 0.85rem; transition: background 0.2s;
+        }
+        .btn-vert:hover { background: #8B5E3C; }
+
+        /* ── CONTENU PRINCIPAL ───────────────────────────────────── */
+        main {
+            flex: 1; padding: 30px 40px;
+            max-width: 1300px; margin: 0 auto; width: 100%;
+        }
+        .page-title { color: #2D5016; font-size: 1.6rem; margin-bottom: 6px; }
+        .page-subtitle { color: #8B5E3C; font-size: 1rem; font-weight: 400; margin-bottom: 24px; }
+
+        /* ── CHARGEMENT ─────────────────────────────────────────── */
+        .chargement {
+            text-align: center; padding: 60px 20px; color: #8B5E3C;
+        }
+        .chargement .spinner {
+            width: 40px; height: 40px; border: 4px solid #e0d8cc;
+            border-top-color: #2D5016; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── GRILLE PRODUITS ────────────────────────────────────── */
+        .grille {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .carte-produit {
+            background: #fff;
+            border: 2px solid #8B5E3C;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .carte-produit:hover {
+            transform: translateY(-3px);
+            box-shadow: 4px 4px 14px rgba(0,0,0,0.12);
+        }
+        .carte-produit .image-wrap {
+            width: 100%; height: 180px;
+            background: #eae5da;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .carte-produit .image-wrap img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .carte-produit .image-wrap .placeholder-icon {
+            color: #c4b89c; display: flex; flex-direction: column;
+            align-items: center; gap: 6px; font-size: 0.8rem;
+        }
+        .carte-produit .contenu { padding: 16px; }
+        .carte-produit h3 { color: #2D5016; margin-bottom: 4px; font-size: 1.1rem; }
+        .carte-produit .categorie { color: #8B5E3C; font-style: italic; font-size: 0.88rem; margin-bottom: 10px; }
+        .carte-produit .prix { font-size: 1.4rem; font-weight: bold; color: #2D5016; margin-bottom: 6px; }
+        .carte-produit .producteur { font-size: 0.85rem; color: #555; margin-top: 8px; }
+
+        /* ── BADGES STOCK ───────────────────────────────────────── */
+        .stock-ok   { color: #2D5016; font-weight: bold; font-size: 0.88rem; }
+        .stock-low  { color: #E07B39; font-weight: bold; font-size: 0.88rem; }
+        .stock-zero { color: #C0392B; font-weight: bold; font-size: 0.88rem; }
+
+        /* ── CARTES PRODUCTEURS ─────────────────────────────────── */
+        .carte-producteur {
+            background: #fff; border-left: 5px solid #2D5016;
+            border-radius: 8px; padding: 24px; margin-bottom: 20px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.06);
+            display: flex; gap: 24px; align-items: flex-start;
+        }
+        .carte-producteur .photo-wrap {
+            min-width: 100px; width: 100px; height: 100px;
+            border-radius: 50%; overflow: hidden;
+            background: #eae5da; display: flex;
+            align-items: center; justify-content: center;
+            flex-shrink: 0; border: 3px solid #e0d8cc;
+        }
+        .carte-producteur .photo-wrap img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .carte-producteur h2 { color: #2D5016; font-size: 1.3rem; margin-bottom: 4px; }
+        .carte-producteur .localite { color: #8B5E3C; font-size: 0.9rem; margin-bottom: 10px; }
+        .carte-producteur .description { line-height: 1.6; }
+        .produits-liste { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0d8cc; }
+        .produits-liste summary { cursor: pointer; color: #2D5016; font-weight: 600; font-size: 0.9rem; }
+        .produits-liste ul { margin-top: 8px; padding-left: 20px; }
+        .produits-liste li { margin-bottom: 4px; font-size: 0.9rem; }
+
+        /* ── FOOTER ─────────────────────────────────────────────── */
+        footer {
+            text-align: center; padding: 20px; color: #8B5E3C;
+            font-size: 0.85rem; border-top: 1px solid #e0d8cc;
+        }
+
+        /* ── ETATS ──────────────────────────────────────────────── */
+        .info {
+            background: #e8f0e3; border: 1px solid #2D5016;
+            color: #2D5016; padding: 16px; border-radius: 8px; text-align: center;
+        }
+        .erreur {
+            background: #fdecea; border: 1px solid #C0392B;
+            color: #C0392B; padding: 20px; border-radius: 8px; text-align: center;
+            max-width: 700px; margin: 40px auto; line-height: 1.6;
+        }
+
+        /* ── RESPONSIVE ─────────────────────────────────────────── */
+        @media (max-width: 700px) {
+            header { padding: 16px 20px; flex-direction: column; gap: 12px; }
+            header h1 { font-size: 1.3rem; }
+            main { padding: 20px; }
+            .filtre-bar { padding: 12px 20px; }
+            .carte-producteur { flex-direction: column; align-items: center; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header>
+    <h1>Vallees de la Molignee <span>— Produits locaux & artisanat</span></h1>
+    <nav>
+        <button id="nav-marche" class="active" onclick="changerPage('marche')">Le Marche</button>
+        <button id="nav-producteurs" onclick="changerPage('producteurs')">Nos Producteurs</button>
+    </nav>
+</header>
+
+<!-- ============ BARRE FILTRES ============ -->
+<div class="filtre-bar visible" id="filtre-bar">
+    <label for="filtre-categorie">Categorie :</label>
+    <select id="filtre-categorie" onchange="afficherProduits()">
+        <option value="Toutes">Toutes</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="filtre-rupture" checked onchange="afficherProduits()">
+        Masquer les ruptures
+    </label>
+    <button class="btn-vert" onclick="chargerDonnees()">Rafraichir</button>
+    <span class="compteur" id="compteur"></span>
+</div>
+
+<!-- ============ CONTENU ============ -->
+<main>
+    <!-- Page Marche -->
+    <div id="page-marche">
+        <h2 class="page-title">Le Marche des Vallees</h2>
+        <p class="page-subtitle">Decouvrez les produits frais et artisanaux de nos producteurs locaux.</p>
+        <div class="grille" id="grille-produits">
+            <div class="chargement"><div class="spinner"></div>Chargement depuis Google Sheets...</div>
+        </div>
+    </div>
+
+    <!-- Page Producteurs -->
+    <div id="page-producteurs" style="display:none">
+        <h2 class="page-title">Nos Artisans & Producteurs</h2>
+        <p class="page-subtitle">Rencontrez les hommes et femmes qui font vivre les Vallees de la Molignee.</p>
+        <div id="liste-producteurs"></div>
+    </div>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer>Vallees de la Molignee — Produits locaux & artisanat</footer>
+
+<!-- ============ JAVASCRIPT ============ -->
+<script>
+    // ================================================================
+    //  CONFIGURATION — Remplace l'ID par celui de ton Google Sheet
+    //
+    //  L'ID se trouve dans l'URL de ton Google Sheet :
+    //  https://docs.google.com/spreadsheets/d/ ---> ICI <--- /edit
+    //
+    //  Le Google Sheet doit etre partage en mode
+    //  "Tous les utilisateurs disposant du lien peuvent consulter"
+    // ================================================================
+    var GOOGLE_SHEET_ID = '1SQPK4XS_mBkUbmNFnjP1bQrhdE4NJGNeGU44oEBkQ4E';
+
+    // Intervalle de rafraichissement automatique (en millisecondes)
+    var REFRESH_INTERVAL = 30000; // 30 secondes
+    // ================================================================
+
+    var produits = [];
+    var producteurs = [];
+    var pageActive = 'marche';
+
+    // ── URL d'export CSV depuis Google Sheets ──────────────
+    // Methode 1 : par nom d'onglet (Google Sheets natif)
+    function urlCSV(nomOnglet) {
+        return 'https://docs.google.com/spreadsheets/d/'
+            + GOOGLE_SHEET_ID
+            + '/gviz/tq?tqx=out:csv&sheet='
+            + encodeURIComponent(nomOnglet);
+    }
+    // Methode 2 : par numero d'onglet (fallback, gid=0 premier onglet)
+    function urlCSVparGid(gid) {
+        return 'https://docs.google.com/spreadsheets/d/'
+            + GOOGLE_SHEET_ID
+            + '/gviz/tq?tqx=out:csv&gid=' + gid;
+    }
+
+    // ── Fetch avec fallback : nom d'onglet -> gid ─────────
+    function fetchOnglet(nomOnglet, gid) {
+        return fetch(urlCSV(nomOnglet)).then(function(r) {
+            if (!r.ok) throw new Error('nom echoue');
+            return r.text();
+        }).then(function(txt) {
+            // Verifier que ce n'est pas une page HTML d'erreur Google
+            if (txt.trim().startsWith('<!') || txt.trim().startsWith('<html')) throw new Error('html recu');
+            return txt;
+        }).catch(function() {
+            // Fallback par gid
+            return fetch(urlCSVparGid(gid)).then(function(r) {
+                if (!r.ok) throw new Error('Onglet ' + nomOnglet + ' introuvable');
+                return r.text();
+            }).then(function(txt) {
+                if (txt.trim().startsWith('<!') || txt.trim().startsWith('<html')) {
+                    throw new Error('Le fichier n\'est pas un Google Sheet natif. Convertis-le via Fichier > Enregistrer au format Google Sheets.');
+                }
+                return txt;
+            });
+        });
+    }
+
+    // ── Parser un CSV en tableau d'objets ──────────────────
+    function parserCSV(csvText) {
+        var wb = XLSX.read(csvText, { type: 'string' });
+        var sheet = wb.Sheets[wb.SheetNames[0]];
+        return sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : [];
+    }
+
+    // ── Charger les donnees depuis Google Sheets ───────────
+    function chargerDonnees() {
+        Promise.all([
+            fetchOnglet('PRODUITS', 0),
+            fetchOnglet('PRODUCTEURS', 1)
+        ])
+        .then(function(resultats) {
+            produits    = parserCSV(resultats[0]).map(normaliserCles);
+            producteurs = parserCSV(resultats[1]).map(normaliserCles);
+
+            remplirCategories();
+            afficherProduits();
+            afficherProducteurs();
+        })
+        .catch(function(err) {
+            console.error('Erreur chargement Google Sheets:', err);
+            document.getElementById('grille-produits').innerHTML =
+                '<div class="erreur">'
+                + '<strong>Impossible de charger les donnees.</strong><br><br>'
+                + 'Verifie que :<br>'
+                + '1. Le fichier est un <strong>Google Sheet natif</strong> (pas un .xlsx importe)<br>'
+                + '&nbsp;&nbsp;&nbsp;&nbsp;→ Ouvre le fichier, puis <em>Fichier &gt; Enregistrer au format Google Sheets</em><br>'
+                + '2. Le Google Sheet est partage en mode "Tous les utilisateurs disposant du lien"<br>'
+                + '3. Les onglets s\'appellent <strong>PRODUITS</strong> (1er) et <strong>PRODUCTEURS</strong> (2e)'
+                + '</div>';
+        });
+    }
+
+    // ── Normaliser les cles (supprimer accents) ────────────
+    function normaliserCles(obj) {
+        var nouveau = {};
+        for (var k in obj) {
+            var nk = k.replace(/[éèê]/g, 'e').replace(/[ÉÈÊ]/g, 'E');
+            nouveau[nk] = obj[k];
+        }
+        return nouveau;
+    }
+
+    // ── Navigation ─────────────────────────────────────────
+    function changerPage(page) {
+        pageActive = page;
+        document.getElementById('page-marche').style.display = page === 'marche' ? 'block' : 'none';
+        document.getElementById('page-producteurs').style.display = page === 'producteurs' ? 'block' : 'none';
+        var fb = document.getElementById('filtre-bar');
+        if (page === 'marche') fb.classList.add('visible');
+        else fb.classList.remove('visible');
+        document.getElementById('nav-marche').classList.toggle('active', page === 'marche');
+        document.getElementById('nav-producteurs').classList.toggle('active', page === 'producteurs');
+    }
+
+    // ── Badge de stock ─────────────────────────────────────
+    function badgeStock(stock) {
+        var q = parseInt(stock) || 0;
+        if (q <= 0) return '<span class="stock-zero">Rupture de stock</span>';
+        if (q <= 5) return '<span class="stock-low">Stock limite : ' + q + '</span>';
+        return '<span class="stock-ok">En stock : ' + q + '</span>';
+    }
+
+    // ── Nom du producteur ──────────────────────────────────
+    function nomProducteur(idProd) {
+        var p = producteurs.find(function(x) { return String(x['ID_Producteur']) === String(idProd); });
+        return p ? p['Nom'] : 'Producteur inconnu';
+    }
+
+    // ── Image produit ou placeholder ───────────────────────
+    function imageProduitHtml(url) {
+        var src = String(url || '').trim();
+        if (src) {
+            return '<div class="image-wrap"><img src="' + escapeAttr(src) + '" alt="Photo produit" onerror="this.parentElement.innerHTML=placeholderProduitSvg()"></div>';
+        }
+        return '<div class="image-wrap">' + placeholderProduitSvg() + '</div>';
+    }
+
+    function placeholderProduitSvg() {
+        return '<div class="placeholder-icon">'
+            + '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#c4b89c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+            + '<path d="M3 3h18v18H3z"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'
+            + '</svg><span>Pas d\'image</span></div>';
+    }
+
+    // ── Image producteur ou placeholder ────────────────────
+    function photoProducteurHtml(url, nom) {
+        var src = String(url || '').trim();
+        if (src) {
+            return '<img src="' + escapeAttr(src) + '" alt="' + escapeAttr(nom) + '" onerror="this.parentElement.innerHTML=placeholderProducteurSvg()">';
+        }
+        return placeholderProducteurSvg();
+    }
+
+    function placeholderProducteurSvg() {
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#c4b89c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+            + '<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+            + '</svg>';
+    }
+
+    // ── Afficher les produits ──────────────────────────────
+    function afficherProduits() {
+        var grille = document.getElementById('grille-produits');
+        var cat = document.getElementById('filtre-categorie').value;
+        var masquer = document.getElementById('filtre-rupture').checked;
+
+        var liste = produits.filter(function(p) {
+            if (cat !== 'Toutes' && String(p['Categorie'] || '') !== cat) return false;
+            if (masquer && (parseInt(p['Stock']) || 0) <= 0) return false;
+            return true;
+        });
+
+        document.getElementById('compteur').textContent = liste.length + ' produit(s)';
+
+        if (liste.length === 0) {
+            grille.innerHTML = '<div class="info">Aucun produit ne correspond a vos criteres.</div>';
+            return;
+        }
+
+        var html = '';
+        liste.forEach(function(p) {
+            var prix = parseFloat(p['Prix']) || 0;
+            var stock = parseInt(p['Stock']) || 0;
+            var nom = String(p['Nom'] || 'Produit sans nom');
+            var categorie = String(p['Categorie'] || 'Non classe');
+            var prod = nomProducteur(p['ID_Producteur'] || '');
+            var imgUrl = p['Image_URL'] || '';
+
+            html += '<div class="carte-produit">'
+                + imageProduitHtml(imgUrl)
+                + '<div class="contenu">'
+                + '<h3>' + escapeHtml(nom) + '</h3>'
+                + '<div class="categorie">' + escapeHtml(categorie) + '</div>'
+                + '<div class="prix">' + prix.toFixed(2) + ' &euro;</div>'
+                + '<div>' + badgeStock(stock) + '</div>'
+                + '<div class="producteur">Par : <strong>' + escapeHtml(prod) + '</strong></div>'
+                + '</div></div>';
+        });
+        grille.innerHTML = html;
+    }
+
+    // ── Afficher les producteurs ───────────────────────────
+    function afficherProducteurs() {
+        var conteneur = document.getElementById('liste-producteurs');
+
+        if (producteurs.length === 0) {
+            conteneur.innerHTML = '<div class="info">Aucun producteur dans le fichier.</div>';
+            return;
+        }
+
+        var html = '';
+        producteurs.forEach(function(pr) {
+            var nom = String(pr['Nom'] || 'Artisan inconnu');
+            var loc = String(pr['Localite'] || 'Vallee de la Molignee');
+            var desc = String(pr['Description'] || 'Aucune description disponible.');
+            var photo = pr['Photo_URL'] || '';
+            var idPr = String(pr['ID_Producteur'] || '');
+
+            var mesProduits = produits.filter(function(p) {
+                return String(p['ID_Producteur']) === idPr;
+            });
+
+            var produitsHtml = '';
+            if (mesProduits.length > 0) {
+                produitsHtml = '<div class="produits-liste"><details>'
+                    + '<summary>Voir les ' + mesProduits.length + ' produit(s)</summary><ul>';
+                mesProduits.forEach(function(p) {
+                    var prix = (parseFloat(p['Prix']) || 0).toFixed(2);
+                    produitsHtml += '<li><strong>' + escapeHtml(String(p['Nom'] || '')) + '</strong> — '
+                        + prix + ' &euro; | ' + badgeStock(p['Stock']) + '</li>';
+                });
+                produitsHtml += '</ul></details></div>';
+            }
+
+            html += '<div class="carte-producteur">'
+                + '<div class="photo-wrap">' + photoProducteurHtml(photo, nom) + '</div>'
+                + '<div style="flex:1">'
+                + '<h2>' + escapeHtml(nom) + '</h2>'
+                + '<div class="localite">' + escapeHtml(loc) + ' | ' + mesProduits.length + ' produit(s) au marche</div>'
+                + '<div class="description">' + escapeHtml(desc) + '</div>'
+                + produitsHtml
+                + '</div></div>';
+        });
+        conteneur.innerHTML = html;
+    }
+
+    // ── Securite ───────────────────────────────────────────
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+    function escapeAttr(text) {
+        return String(text).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Remplir le filtre categories ───────────────────────
+    function remplirCategories() {
+        var select = document.getElementById('filtre-categorie');
+        var valeur = select.value;
+        var cats = new Set();
+        produits.forEach(function(p) {
+            var c = String(p['Categorie'] || '').trim();
+            if (c) cats.add(c);
+        });
+        var liste = Array.from(cats).sort();
+        select.innerHTML = '<option value="Toutes">Toutes</option>';
+        liste.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            if (c === valeur) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    // ── Chargement initial + auto-refresh ──────────────────
+    chargerDonnees();
+    setInterval(chargerDonnees, REFRESH_INTERVAL);
+</script>
+
+</body>
+</html>
