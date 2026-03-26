@@ -308,7 +308,7 @@
     function parserCSV(csvText) {
         var wb = XLSX.read(csvText, { type: 'string' });
         var sheet = wb.Sheets[wb.SheetNames[0]];
-        return sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : [];
+        return sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false }) : [];
     }
 
     // ── Charger les donnees depuis Google Sheets ───────────
